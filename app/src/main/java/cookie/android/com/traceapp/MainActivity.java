@@ -16,7 +16,9 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import cookie.android.com.traceapp.helpers.Filters;
@@ -35,6 +37,9 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private List<TrackingData> trackingList;
     private List<TrackingData> filtederedTrackingList;
+
+    LocationManager locationManager;
+    LocationListener locationListener;
 
 
     @Override
@@ -58,20 +63,21 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private void stopTracking() {
         setDefaultUI();
+        stopGPSTracking();
         saveData(listsToString());
     }
 
     private void startTracking() {
         setTrackingUI();
+        startGPSTracking();
     }
 
     private void saveData(String data) {
         try {
 
-            File rootsd = Environment.getExternalStorageDirectory();
-            File dcim = new File(rootsd.getAbsolutePath() + "/DCIM");
-            dcim.createNewFile();
-            FileOutputStream fOut = new FileOutputStream(dcim);
+            File myFile = new File("/sdcard/trackedFile.txt");
+            myFile.createNewFile();
+            FileOutputStream fOut = new FileOutputStream(myFile);
             OutputStreamWriter myOutWriter =
                     new OutputStreamWriter(fOut);
             myOutWriter.append(data);
@@ -94,22 +100,12 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private void setTrackingUI() {
         state.setText(R.string.tracking);
+        lastLoc.setText(R.string.looking_for_signal);
         trackingButton.setText(R.string.stop_tracking);
     }
 
 
     private void initializeComponents() {
-
-        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
-        LocationListener locationListener = new TraceAppLocationListener(this);
-        try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, locationListener);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Seciurity error", e);
-        }
-
-
         state = (TextView) findViewById(R.id.state);
         lastLoc = (TextView) findViewById(R.id.last_loc);
 
@@ -131,13 +127,35 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private String listsToString() {
         StringBuilder str = new StringBuilder();
-        for(int i = 0; i < trackingList.size(); i++) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        String currentDateandTime = sdf.format(new Date());
+        str.append(currentDateandTime);
+        for (int i = 0; i < trackingList.size(); i++) {
             str.append(trackingList.get(i).toString());
             str.append(" ");
             str.append(filtederedTrackingList.get(i).toString());
             str.append("\n");
         }
         return str.toString();
+    }
+
+
+    private void startGPSTracking() {
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        locationListener = new TraceAppLocationListener(this);
+        try {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, locationListener);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Seciurity error", e);
+        }
+    }
+
+    private void stopGPSTracking() {
+        try {
+            locationManager.removeUpdates(locationListener);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Seciuruty Error: ", e);
+        }
     }
 
     @Override
