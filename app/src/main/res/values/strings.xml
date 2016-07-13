@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">TraceApp</string>
+    <string name="hello_in_trace_app">Hello in Trace App</string>
+    <string name="press_button_to_start">Press Button to start</string>
+    <string name="start_tracking">Start Tracking</string>
+</resources>
