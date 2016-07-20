@@ -25,7 +25,7 @@ public class TraceAppLocationListener implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
         Log.d(TAG, "Lat: " + location.getLatitude() + " Lon: " + location.getLongitude());
-        accessor.locationChanged(new TrackingData(location));
+        accessor.locationChanged(location);
     }
 
     @Override

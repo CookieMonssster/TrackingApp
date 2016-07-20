@@ -1,12 +1,13 @@
 package cookie.android.com.traceapp;
 
 import android.content.Context;
+import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.StringBuilderPrinter;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -24,22 +25,25 @@ import java.util.List;
 import cookie.android.com.traceapp.helpers.Filters;
 import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.helpers.TraceAppLocationListener;
-import cookie.android.com.traceapp.helpers.TrackingData;
 
 public class MainActivity extends AppCompatActivity implements MainActivityAccessor {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private static final String TRACKING_URL = "/sdcard/trackedFile.txt";
+    private static final String FILTERED_URL = "/sdcard/filteredData.txt";
 
     private Button trackingButton;
+    private Button filteringButton;
     private TextView state;
     private TextView lastLoc;
     private boolean isTracking = false;
 
-    private List<TrackingData> trackingList;
-    private List<TrackingData> filtederedTrackingList;
+    private List<Location> trackingList;
+    private List<Location> filteredTrackingList;
 
     LocationManager locationManager;
     LocationListener locationListener;
+    private Filters filters;
 
 
     @Override
@@ -51,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
         initializeComponents();
         trackingList = new ArrayList<>();
-        filtederedTrackingList = new ArrayList<>();
+        filteredTrackingList = new ArrayList<>();
     }
 
     @Override
@@ -61,10 +65,18 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
         PermissionsRequester.verifyGPSPermissions(this);
     }
 
+    private void startFiltering() {
+        Filters filters = new Filters(Filters.getFirstLoc());
+        trackingList = filters.getExampleData2();
+        filteredTrackingList = filters.simpleFilterWithList(trackingList);
+        saveData(filteredToString(), FILTERED_URL);
+
+    }
+
     private void stopTracking() {
         setDefaultUI();
         stopGPSTracking();
-        saveData(listsToString());
+        saveData(dataToString(), TRACKING_URL);
     }
 
     private void startTracking() {
@@ -72,10 +84,10 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
         startGPSTracking();
     }
 
-    private void saveData(String data) {
+    private void saveData(String data, String url) {
         try {
 
-            File myFile = new File("/sdcard/trackedFile.txt");
+            File myFile = new File(url);
             myFile.createNewFile();
             FileOutputStream fOut = new FileOutputStream(myFile);
             OutputStreamWriter myOutWriter =
@@ -83,7 +95,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
             myOutWriter.append(data);
             myOutWriter.close();
             fOut.close();
-            Toast.makeText(getBaseContext(), R.string.save_done_message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getBaseContext(), R.string.save_done_message + url, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Log.e(TAG, "Write error", e);
             Toast.makeText(getBaseContext(), e.getMessage(),
@@ -123,17 +135,40 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
                 }
             }
         });
+        filteringButton = (Button) findViewById(R.id.filtering_button);
+        filteringButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startFiltering();
+            }
+        });
     }
 
-    private String listsToString() {
+    private String dataToString() {
         StringBuilder str = new StringBuilder();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        String currentDateandTime = sdf.format(new Date());
-        str.append(currentDateandTime);
-        for (int i = 0; i < trackingList.size(); i++) {
-            str.append(trackingList.get(i).toString());
-            str.append(" ");
-            str.append(filtederedTrackingList.get(i).toString());
+        String currentDateAndTime = sdf.format(new Date());
+        str.append(currentDateAndTime);
+        str.append("\n");
+        for (Location loc : trackingList) {
+            str.append("data.add(newLocation(");
+            str.append(printLoc(loc));
+            str.append("));\n");
+        }
+
+        str.append("\n\n");
+
+        for (Location loc : trackingList) {
+            str.append(printLoc(loc));
+        }
+
+        return str.toString();
+    }
+
+    private String filteredToString() {
+        StringBuilder str = new StringBuilder();
+        for (Location loc : filteredTrackingList) {
+            str.append(printLoc(loc));
             str.append("\n");
         }
         return str.toString();
@@ -164,9 +199,18 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
     }
 
     @Override
-    public void locationChanged(TrackingData td) {
-        lastLoc.setText(td.toString());
-        trackingList.add(td);
-        filtederedTrackingList.add(Filters.simpleFilter(td));
+    public void locationChanged(Location loc) {
+        if(filters == null) {
+            filters = new Filters(loc);
+        }
+        lastLoc.setText(printLoc(loc));
+        trackingList.add(loc);
+        Location filteredLoc = filters.simpleFilter(loc);
+        filteredTrackingList.add(filteredLoc);
+        filters.setOldLoc(loc);
+    }
+
+    private String printLoc(Location loc) {
+        return loc.getLatitude() + " " + loc.getLongitude();
     }
 }

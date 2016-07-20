@@ -1,9 +1,7 @@
 package cookie.android.com.traceapp;
 
 import android.content.Context;
-
-import cookie.android.com.traceapp.helpers.TrackingData;
-
+import android.location.Location;
 /**
  * Copyright (C) TomTom International B.V., 2015
  * All rights reserved.
@@ -11,6 +9,6 @@ import cookie.android.com.traceapp.helpers.TrackingData;
 public interface MainActivityAccessor {
 
     Context getContext();
-    void locationChanged(TrackingData td);
+    void locationChanged(Location td);
 
 }
