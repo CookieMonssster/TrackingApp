@@ -1,13 +1,9 @@
 package cookie.android.com.traceapp;
 
-import android.content.Context;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.util.StringBuilderPrinter;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -24,9 +20,12 @@ import java.util.List;
 
 import cookie.android.com.traceapp.helpers.Filters;
 import cookie.android.com.traceapp.helpers.PermissionsRequester;
-import cookie.android.com.traceapp.helpers.TraceAppLocationListener;
+import cookie.android.com.traceapp.location.LocationProvider;
+import cookie.android.com.traceapp.location.events.LocationChangedEvent;
+import rx.Subscriber;
+import rx.Subscription;
 
-public class MainActivity extends AppCompatActivity implements MainActivityAccessor {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String TRACKING_URL = "/sdcard/trackedFile.txt";
@@ -41,8 +40,10 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
     private List<Location> trackingList;
     private List<Location> filteredTrackingList;
 
-    LocationManager locationManager;
-    LocationListener locationListener;
+    Subscription locationChangeSubscriber;
+
+    LocationProvider locationProvider;
+
     private Filters filters;
 
 
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
         initializeComponents();
         trackingList = new ArrayList<>();
         filteredTrackingList = new ArrayList<>();
+        locationProvider = new LocationProvider(this.getApplicationContext());
     }
 
     @Override
@@ -75,13 +77,14 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private void stopTracking() {
         setDefaultUI();
-        stopGPSTracking();
+        locationProvider.stopGPSTracking();
         saveData(dataToString(), TRACKING_URL);
     }
 
     private void startTracking() {
         setTrackingUI();
-        startGPSTracking();
+        locationProvider.startGPSTracking();
+        locationChangeSubscriber = locationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
     }
 
     private void saveData(String data, String url) {
@@ -174,33 +177,8 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
         return str.toString();
     }
 
-
-    private void startGPSTracking() {
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        locationListener = new TraceAppLocationListener(this);
-        try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 10, locationListener);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Seciurity error", e);
-        }
-    }
-
-    private void stopGPSTracking() {
-        try {
-            locationManager.removeUpdates(locationListener);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Seciuruty Error: ", e);
-        }
-    }
-
-    @Override
-    public Context getContext() {
-        return getContext();
-    }
-
-    @Override
-    public void locationChanged(Location loc) {
-        if(filters == null) {
+    private void locationChanged(Location loc) {
+        if (filters == null) {
             filters = new Filters(loc);
         }
         lastLoc.setText(printLoc(loc));
@@ -212,5 +190,25 @@ public class MainActivity extends AppCompatActivity implements MainActivityAcces
 
     private String printLoc(Location loc) {
         return loc.getLatitude() + " " + loc.getLongitude();
+    }
+
+
+    private class LocationChangedSubscriber extends Subscriber<LocationChangedEvent> {
+
+
+        @Override
+        public void onCompleted() {
+
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onNext(LocationChangedEvent locationChangedEvent) {
+            locationChanged(locationChangedEvent.location);
+        }
     }
 }
