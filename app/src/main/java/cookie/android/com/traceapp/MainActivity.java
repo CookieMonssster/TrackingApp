@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopTracking() {
         setDefaultUI();
-        cookieLocationProvider.stopGPSTracking();
+        cookieLocationProvider.stopTracking();
         locationChangeSubscriber.unsubscribe();
         filteredLocationChangeSubscriber.unsubscribe();
         saveData(dataToString(), TRACKING_URL);
@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startTracking() {
         setTrackingUI();
-        cookieLocationProvider.startGPSTracking();
+        cookieLocationProvider.startTracking();
         locationChangeSubscriber = cookieLocationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
         filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
                 .subscribe(new FilteredLocationChangedSubscriber());

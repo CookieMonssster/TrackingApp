@@ -39,7 +39,7 @@ public class CookieLocationProvider {
     }
 
 
-    public void startGPSTracking() {
+    public void startTracking() {
         PermissionRequester.verifyGPSPermissions(activity);
 
         locationManager = (LocationManager) activity.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
@@ -51,7 +51,7 @@ public class CookieLocationProvider {
         }
     }
 
-    public void stopGPSTracking() {
+    public void stopTracking() {
         try {
             locationManager.removeUpdates(locationListener);
         } catch (SecurityException e) {
