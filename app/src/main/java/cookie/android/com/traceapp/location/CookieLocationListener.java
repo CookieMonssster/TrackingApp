@@ -18,9 +18,9 @@ import rx.subjects.PublishSubject;
  * Copyright (C) CookieStudio, 2016
  * All rights reserved.
  */
-public class GPSLocationListener implements LocationListener {
+public class CookieLocationListener implements LocationListener {
 
-    private static final String TAG = "GPSLocationListener";
+    private static final String TAG = "CookieLocationListener";
 
     PublishSubject<LocationEvent> locationChangeSubject = PublishSubject.create();
 

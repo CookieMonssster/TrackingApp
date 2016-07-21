@@ -35,12 +35,4 @@ public class PermissionsRequester {
             );
         }
     }
-
-    public static void verifyGPSPermissions(Activity activity) {
-        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION);
-
-        if(permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(activity, PERMISSIONS_LOCATION, REQUEST_EXTERNAL_STORAGE);
-        }
-    }
 }

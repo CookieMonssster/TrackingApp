@@ -20,8 +20,10 @@ import java.util.List;
 
 import cookie.android.com.traceapp.helpers.Filters;
 import cookie.android.com.traceapp.helpers.PermissionsRequester;
-import cookie.android.com.traceapp.location.LocationProvider;
+import cookie.android.com.traceapp.location.CookieLocationProvider;
+import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
 import cookie.android.com.traceapp.location.events.LocationChangedEvent;
+import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Subscriber;
 import rx.Subscription;
 
@@ -41,8 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private List<Location> filteredTrackingList;
 
     Subscription locationChangeSubscriber;
+    Subscription filteredLocationChangeSubscriber;
 
-    LocationProvider locationProvider;
+    CookieLocationProvider cookieLocationProvider;
 
     private Filters filters;
 
@@ -57,34 +60,41 @@ public class MainActivity extends AppCompatActivity {
         initializeComponents();
         trackingList = new ArrayList<>();
         filteredTrackingList = new ArrayList<>();
-        locationProvider = new LocationProvider(this.getApplicationContext());
+        cookieLocationProvider = new CookieLocationProviderBuilder(this).build();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         PermissionsRequester.verifyStoragePermissions(this);
-        PermissionsRequester.verifyGPSPermissions(this);
     }
 
     private void startFiltering() {
-        Filters filters = new Filters(Filters.getFirstLoc());
         trackingList = filters.getExampleData2();
-        filteredTrackingList = filters.simpleFilterWithList(trackingList);
+        filteredTrackingList.clear();
+        CookieSimpleFilter sf = new CookieSimpleFilter();
+        for (Location loc : trackingList) {
+            filteredTrackingList.add(sf.call(new LocationChangedEvent(loc)).location);
+        }
         saveData(filteredToString(), FILTERED_URL);
 
     }
 
     private void stopTracking() {
         setDefaultUI();
-        locationProvider.stopGPSTracking();
+        cookieLocationProvider.stopGPSTracking();
+        locationChangeSubscriber.unsubscribe();
+        filteredLocationChangeSubscriber.unsubscribe();
         saveData(dataToString(), TRACKING_URL);
     }
 
     private void startTracking() {
         setTrackingUI();
-        locationProvider.startGPSTracking();
-        locationChangeSubscriber = locationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
+        cookieLocationProvider.startGPSTracking();
+        locationChangeSubscriber = cookieLocationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
+        filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
+                .subscribe(new FilteredLocationChangedSubscriber());
+
     }
 
     private void saveData(String data, String url) {
@@ -178,14 +188,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void locationChanged(Location loc) {
-        if (filters == null) {
-            filters = new Filters(loc);
-        }
         lastLoc.setText(printLoc(loc));
-        trackingList.add(loc);
-        Location filteredLoc = filters.simpleFilter(loc);
-        filteredTrackingList.add(filteredLoc);
-        filters.setOldLoc(loc);
     }
 
     private String printLoc(Location loc) {
@@ -209,6 +212,25 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onNext(LocationChangedEvent locationChangedEvent) {
             locationChanged(locationChangedEvent.location);
+            trackingList.add(locationChangedEvent.location);
+        }
+    }
+
+    private class FilteredLocationChangedSubscriber extends Subscriber<LocationChangedEvent> {
+
+        @Override
+        public void onCompleted() {
+
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onNext(LocationChangedEvent locationChangedEvent) {
+            filteredTrackingList.add(locationChangedEvent.location);
         }
     }
 }
