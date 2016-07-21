@@ -8,4 +8,7 @@
     <string name="stop_tracking">Stop Tracking</string>
     <string name="looking_for_signal">looking for signal</string>
     <string name="filter_data">Filter Data</string>
+    <string name="start_compass">start compass</string>
+    <string name="stop_compass">stop compass</string>
+    <string name="no_compass">no compass</string>
 </resources>

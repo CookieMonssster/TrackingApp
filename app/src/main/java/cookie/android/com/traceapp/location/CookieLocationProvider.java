@@ -2,6 +2,8 @@ package cookie.android.com.traceapp.location;
 
 import android.app.Activity;
 import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.location.LocationManager;
 import android.util.Log;
 
@@ -9,6 +11,7 @@ import cookie.android.com.traceapp.location.events.LocationChangedEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderDisabledEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderEnabledEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderStatusChangedEvent;
+import cookie.android.com.traceapp.location.filters.CookieSensorEventListener;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Observable;
 import rx.functions.Func1;
@@ -34,8 +37,27 @@ public class CookieLocationProvider {
 
     private Activity activity;
 
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private Sensor magnetometer;
+    private CookieSensorEventListener cookieSensorEventListener;
+
+
     protected CookieLocationProvider(Activity activity) {
         this.activity = activity;
+        sensorManager = (SensorManager) activity.getSystemService(activity.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        cookieSensorEventListener = new CookieSensorEventListener();
+    }
+
+    public void startCompass() {
+        sensorManager.registerListener(cookieSensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        sensorManager.registerListener(cookieSensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    public void stopCompass() {
+        sensorManager.unregisterListener(cookieSensorEventListener);
     }
 
 

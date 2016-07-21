@@ -10,6 +10,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.w3c.dom.Text;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
@@ -23,6 +25,7 @@ import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
 import cookie.android.com.traceapp.location.events.LocationChangedEvent;
+import cookie.android.com.traceapp.location.events.SensorChangedEvent;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Subscriber;
 import rx.Subscription;
@@ -34,10 +37,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String FILTERED_URL = "/sdcard/filteredData.txt";
 
     private Button trackingButton;
+    private Button compassButton;
     private Button filteringButton;
     private TextView state;
     private TextView lastLoc;
+    private TextView lastCompass;
     private boolean isTracking = false;
+    private boolean isCompass = false;
 
     private List<Location> trackingList;
     private List<Location> filteredTrackingList;
@@ -67,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         PermissionsRequester.verifyStoragePermissions(this);
+
     }
 
     private void startFiltering() {
@@ -80,12 +87,22 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void stopCompass() {
+        setStopCompassUI();
+        cookieLocationProvider.stopCompass();
+    }
+
     private void stopTracking() {
         setDefaultUI();
         cookieLocationProvider.stopTracking();
         locationChangeSubscriber.unsubscribe();
         filteredLocationChangeSubscriber.unsubscribe();
         saveData(dataToString(), TRACKING_URL);
+    }
+
+    private void startCompass() {
+        setCompassStartUI();
+        cookieLocationProvider.startCompass();
     }
 
     private void startTracking() {
@@ -129,10 +146,20 @@ public class MainActivity extends AppCompatActivity {
         trackingButton.setText(R.string.stop_tracking);
     }
 
+    private void setStopCompassUI() {
+        lastCompass.setText(R.string.no_compass);
+        compassButton.setText(R.string.start_compass);
+    }
+
+    private void setCompassStartUI() {
+        compassButton.setText(R.string.stop_compass);
+    }
+
 
     private void initializeComponents() {
         state = (TextView) findViewById(R.id.state);
         lastLoc = (TextView) findViewById(R.id.last_loc);
+        lastCompass = (TextView) findViewById(R.id.last_compass);
 
 
         trackingButton = (Button) findViewById(R.id.tracking_button);
@@ -148,6 +175,20 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+        compassButton = (Button) findViewById(R.id.compass_button);
+        compassButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isCompass) {
+                    stopCompass();
+                    isCompass = false;
+                } else {
+                    startCompass();
+                    isCompass = true;
+                }
+            }
+        });
+
         filteringButton = (Button) findViewById(R.id.filtering_button);
         filteringButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -155,6 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 startFiltering();
             }
         });
+
     }
 
     private String dataToString() {
@@ -189,6 +231,17 @@ public class MainActivity extends AppCompatActivity {
 
     private void locationChanged(Location loc) {
         lastLoc.setText(printLoc(loc));
+    }
+
+    private void compassChanged(SensorChangedEvent sensorChangedEvent) {
+        StringBuilder str = new StringBuilder();
+        str.append("Azimuth: ");
+        str.append(sensorChangedEvent.orientation[0]);
+        str.append("\nPitch: ");
+        str.append(sensorChangedEvent.orientation[1]);
+        str.append("\nRoll: ");
+        str.append(sensorChangedEvent.orientation[2]);
+        compassButton.setText(str.toString());
     }
 
     private String printLoc(Location loc) {
