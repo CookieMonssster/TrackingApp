@@ -9,7 +9,7 @@ import rx.functions.Func1;
  * Copyright (C) CookieStudio, 2016
  * All rights reserved.
  */
-public class CookieSimpleFilter implements Func1<LocationChangedEvent, LocationChangedEvent> {
+public class CookieSimpleFilter implements Func1<Location, Location> {
 
     private static final long WILDLY_OUT = 15;
     private static final long TOO_OLD = 10000;
@@ -22,36 +22,36 @@ public class CookieSimpleFilter implements Func1<LocationChangedEvent, LocationC
     double oldLat = DEFAULT_DATA;
 
     @Override
-    public LocationChangedEvent call(LocationChangedEvent locationChangedEvent) {
-        checkOldData(locationChangedEvent);
+    public Location call(Location location) {
+        checkOldData(location);
 
         double filteredLon = oldLon;
         double filteredLat = oldLat;
 
-        if (locationChangedEvent.location.getAccuracy() < WILDLY_OUT) {
-            filteredLon = (NO_SAMPLES * oldLon + locationChangedEvent.location.getLongitude()) / (NO_SAMPLES + 1);
-            filteredLat = (NO_SAMPLES * oldLat + locationChangedEvent.location.getLatitude()) / (NO_SAMPLES + 1);
+        if (location.getAccuracy() < WILDLY_OUT) {
+            filteredLon = (NO_SAMPLES * oldLon + location.getLongitude()) / (NO_SAMPLES + 1);
+            filteredLat = (NO_SAMPLES * oldLat + location.getLatitude()) / (NO_SAMPLES + 1);
             lastLocationTime = System.currentTimeMillis() - lastLocationTime;
         }
 
         if (lastLocationTime > TOO_OLD) {
-            filteredLon = locationChangedEvent.location.getLongitude();
-            filteredLat = locationChangedEvent.location.getLatitude();
+            filteredLon = location.getLongitude();
+            filteredLat = location.getLatitude();
         }
 
         oldLon = filteredLon;
         oldLat = filteredLat;
-        Location filteredLoc = new Location(locationChangedEvent.location.getProvider());
+        Location filteredLoc = new Location(location.getProvider());
         filteredLoc.setLatitude(filteredLat);
         filteredLoc.setLongitude(filteredLon);
 
-        return new LocationChangedEvent(filteredLoc);
+        return filteredLoc;
     }
 
-    private void checkOldData(LocationChangedEvent locationChangedEvent) {
+    private void checkOldData(Location location) {
         if(oldLon == DEFAULT_DATA || oldLon == DEFAULT_DATA) {
-            oldLon = locationChangedEvent.location.getLongitude();
-            oldLat = locationChangedEvent.location.getLatitude();
+            oldLon = location.getLongitude();
+            oldLat = location.getLatitude();
         }
     }
 }

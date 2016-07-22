@@ -25,6 +25,7 @@ import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
 import cookie.android.com.traceapp.location.events.LocationChangedEvent;
+import cookie.android.com.traceapp.location.events.LocationProviderStatusChangedEvent;
 import cookie.android.com.traceapp.location.events.SensorChangedEvent;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Subscriber;
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     Subscription locationChangeSubscriber;
     Subscription filteredLocationChangeSubscriber;
+    Subscription testSub;
 
     CookieLocationProvider cookieLocationProvider;
 
@@ -81,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         filteredTrackingList.clear();
         CookieSimpleFilter sf = new CookieSimpleFilter();
         for (Location loc : trackingList) {
-            filteredTrackingList.add(sf.call(new LocationChangedEvent(loc)).location);
+            filteredTrackingList.add(sf.call(loc));
         }
         saveData(filteredToString(), FILTERED_URL);
 
@@ -92,25 +94,42 @@ public class MainActivity extends AppCompatActivity {
         cookieLocationProvider.stopCompass();
     }
 
-    private void stopTracking() {
-        setDefaultUI();
-        cookieLocationProvider.stopTracking();
-        locationChangeSubscriber.unsubscribe();
-        filteredLocationChangeSubscriber.unsubscribe();
-        saveData(dataToString(), TRACKING_URL);
-    }
-
     private void startCompass() {
         setCompassStartUI();
         cookieLocationProvider.startCompass();
     }
 
+    private void stopTracking() {
+        setDefaultUI();
+        //cookieLocationProvider.stopTracking();
+        locationChangeSubscriber.unsubscribe();
+        //filteredLocationChangeSubscriber.unsubscribe();
+        //testSub.unsubscribe();
+        saveData(dataToString(), TRACKING_URL);
+    }
+
     private void startTracking() {
         setTrackingUI();
-        cookieLocationProvider.startTracking();
+        //cookieLocationProvider.startTracking();
         locationChangeSubscriber = cookieLocationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
-        filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
-                .subscribe(new FilteredLocationChangedSubscriber());
+        testSub = cookieLocationProvider.getLocationProviderStatusChangedObservable().subscribe(new Subscriber<LocationProviderStatusChangedEvent>() {
+            @Override
+            public void onCompleted() {
+
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onNext(LocationProviderStatusChangedEvent locationProviderStatusChangedEvent) {
+
+            }
+        });
+//        filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
+//                .subscribe(new FilteredLocationChangedSubscriber());
 
     }
 
@@ -249,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private class LocationChangedSubscriber extends Subscriber<LocationChangedEvent> {
+    private class LocationChangedSubscriber extends Subscriber<Location> {
 
 
         @Override
@@ -263,13 +282,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onNext(LocationChangedEvent locationChangedEvent) {
-            locationChanged(locationChangedEvent.location);
-            trackingList.add(locationChangedEvent.location);
+        public void onNext(Location location) {
+            locationChanged(location);
+            trackingList.add(location);
         }
     }
 
-    private class FilteredLocationChangedSubscriber extends Subscriber<LocationChangedEvent> {
+    private class FilteredLocationChangedSubscriber extends Subscriber<Location> {
 
         @Override
         public void onCompleted() {
@@ -282,8 +301,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onNext(LocationChangedEvent locationChangedEvent) {
-            filteredTrackingList.add(locationChangedEvent.location);
+        public void onNext(Location location) {
+            filteredTrackingList.add(location);
         }
     }
 }

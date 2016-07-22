@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
 
@@ -14,6 +15,7 @@ import cookie.android.com.traceapp.location.events.LocationProviderStatusChanged
 import cookie.android.com.traceapp.location.filters.CookieSensorEventListener;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Observable;
+import rx.functions.Action0;
 import rx.functions.Func1;
 
 /**
@@ -27,16 +29,13 @@ public class CookieLocationProvider {
     private static final String DEFAULT_PROVIDER = LocationManager.GPS_PROVIDER;
     private static final long DEFAULT_MINIMUM_TIME = 3000;
     private static final long DEFAULT_MINIMUM_DISTANCE = 3;
-
-    private CookieLocationListener locationListener;
-    private LocationManager locationManager;
-
     protected String provider = DEFAULT_PROVIDER;
     protected long minimumTime = DEFAULT_MINIMUM_TIME;
     protected long minimumDistance = DEFAULT_MINIMUM_DISTANCE;
 
     private Activity activity;
-
+    private CookieLocationListener locationListener;
+    private LocationManager locationManager;
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private Sensor magnetometer;
@@ -49,6 +48,7 @@ public class CookieLocationProvider {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         cookieSensorEventListener = new CookieSensorEventListener();
+        locationListener = new CookieLocationListener();
     }
 
     public void startCompass() {
@@ -65,7 +65,6 @@ public class CookieLocationProvider {
         PermissionRequester.verifyGPSPermissions(activity);
 
         locationManager = (LocationManager) activity.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
-        locationListener = new CookieLocationListener();
         try {
             locationManager.requestLocationUpdates(provider, minimumTime, minimumDistance, locationListener);
         } catch (SecurityException e) {
@@ -81,27 +80,51 @@ public class CookieLocationProvider {
         }
     }
 
-    public Observable<LocationChangedEvent> getLocationChangeObservable() {
-        return locationListener.getLocationChangedObservable();
+    public Observable<Location> getLocationChangeObservable() {
+        startTracking();
+        return locationListener.getLocationChangedObservable().map(new Func1<LocationChangedEvent, Location>() {
+            @Override
+            public Location call(LocationChangedEvent locationChangedEvent) {
+                return locationChangedEvent.location;
+            }
+        }).doOnUnsubscribe(new unsubscribeAction());
     }
 
-    public Observable<LocationChangedEvent> getFilteredLocationChangeObservable(Func1<LocationChangedEvent, LocationChangedEvent> func1) {
-        return locationListener.getLocationChangedObservable().map(func1);
+    public Observable<Location> getFilteredLocationChangeObservable(Func1<Location, Location> func1) {
+        return getLocationChangeObservable().map(func1);
     }
 
-    public Observable<LocationChangedEvent> getSimpleFilteredLocationChangeObservable() {
+    public Observable<Location> getSimpleFilteredLocationChangeObservable() {
         return getFilteredLocationChangeObservable(new CookieSimpleFilter());
     }
 
     public Observable<LocationProviderStatusChangedEvent> getLocationProviderStatusChangedObservable() {
-        return locationListener.getLocationProviderStatusChangedObservable();
+        startTracking();
+        return locationListener.getLocationProviderStatusChangedObservable()
+                .doOnUnsubscribe(new unsubscribeAction());
     }
 
     public Observable<LocationProviderEnabledEvent> getLocationProviderEnabledObservable() {
-        return locationListener.getLocationProviderEnabledEvent();
+        return locationListener.getLocationProviderEnabledEvent()
+                .doOnUnsubscribe(new unsubscribeAction());
     }
 
     public Observable<LocationProviderDisabledEvent> getLocationProviderDisabledObservable() {
-        return locationListener.getLocationProviderDisabledEvent();
+        return locationListener.getLocationProviderDisabledEvent()
+                .doOnUnsubscribe(new unsubscribeAction());
+    }
+
+    private class unsubscribeAction implements Action0 {
+        @Override
+        public void call() {
+            stopTracking();
+        }
+    }
+
+    private class subscribeAction implements Action0 {
+        @Override
+        public void call() {
+
+        }
     }
 }
