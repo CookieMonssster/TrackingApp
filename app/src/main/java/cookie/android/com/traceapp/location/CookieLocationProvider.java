@@ -33,6 +33,8 @@ public class CookieLocationProvider {
     protected long minimumTime = DEFAULT_MINIMUM_TIME;
     protected long minimumDistance = DEFAULT_MINIMUM_DISTANCE;
 
+    private int subscribeCounter = 0;
+
     private Activity activity;
     private CookieLocationListener locationListener;
     private LocationManager locationManager;
@@ -62,7 +64,11 @@ public class CookieLocationProvider {
 
 
     public void startTracking() {
+        if(subscribeCounter > 0) {
+            return;
+        }
         PermissionRequester.verifyGPSPermissions(activity);
+
 
         locationManager = (LocationManager) activity.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
         try {
@@ -73,6 +79,7 @@ public class CookieLocationProvider {
     }
 
     public void stopTracking() {
+
         try {
             locationManager.removeUpdates(locationListener);
         } catch (SecurityException e) {
@@ -81,6 +88,7 @@ public class CookieLocationProvider {
     }
 
     public Observable<Location> getLocationChangeObservable() {
+        subscribeCounter++;
         startTracking();
         return locationListener.getLocationChangedObservable().map(new Func1<LocationChangedEvent, Location>() {
             @Override
@@ -99,32 +107,32 @@ public class CookieLocationProvider {
     }
 
     public Observable<LocationProviderStatusChangedEvent> getLocationProviderStatusChangedObservable() {
+        subscribeCounter++;
         startTracking();
         return locationListener.getLocationProviderStatusChangedObservable()
                 .doOnUnsubscribe(new unsubscribeAction());
     }
 
     public Observable<LocationProviderEnabledEvent> getLocationProviderEnabledObservable() {
+        subscribeCounter++;
         return locationListener.getLocationProviderEnabledEvent()
                 .doOnUnsubscribe(new unsubscribeAction());
     }
 
     public Observable<LocationProviderDisabledEvent> getLocationProviderDisabledObservable() {
+        subscribeCounter++;
         return locationListener.getLocationProviderDisabledEvent()
                 .doOnUnsubscribe(new unsubscribeAction());
     }
 
     private class unsubscribeAction implements Action0 {
+
         @Override
         public void call() {
-            stopTracking();
-        }
-    }
-
-    private class subscribeAction implements Action0 {
-        @Override
-        public void call() {
-
+            subscribeCounter--;
+            if (subscribeCounter < 1) {
+                stopTracking();
+            }
         }
     }
 }

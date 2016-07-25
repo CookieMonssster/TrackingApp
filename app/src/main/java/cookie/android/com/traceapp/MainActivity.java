@@ -10,8 +10,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.w3c.dom.Text;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
@@ -24,8 +22,6 @@ import cookie.android.com.traceapp.helpers.Filters;
 import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
-import cookie.android.com.traceapp.location.events.LocationChangedEvent;
-import cookie.android.com.traceapp.location.events.LocationProviderStatusChangedEvent;
 import cookie.android.com.traceapp.location.events.SensorChangedEvent;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Subscriber;
@@ -101,35 +97,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopTracking() {
         setDefaultUI();
-        //cookieLocationProvider.stopTracking();
         locationChangeSubscriber.unsubscribe();
-        //filteredLocationChangeSubscriber.unsubscribe();
-        //testSub.unsubscribe();
+        filteredLocationChangeSubscriber.unsubscribe();
         saveData(dataToString(), TRACKING_URL);
     }
 
     private void startTracking() {
         setTrackingUI();
-        //cookieLocationProvider.startTracking();
         locationChangeSubscriber = cookieLocationProvider.getLocationChangeObservable().subscribe(new LocationChangedSubscriber());
-        testSub = cookieLocationProvider.getLocationProviderStatusChangedObservable().subscribe(new Subscriber<LocationProviderStatusChangedEvent>() {
-            @Override
-            public void onCompleted() {
-
-            }
-
-            @Override
-            public void onError(Throwable e) {
-
-            }
-
-            @Override
-            public void onNext(LocationProviderStatusChangedEvent locationProviderStatusChangedEvent) {
-
-            }
-        });
-//        filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
-//                .subscribe(new FilteredLocationChangedSubscriber());
+        filteredLocationChangeSubscriber = cookieLocationProvider.getSimpleFilteredLocationChangeObservable()
+                .subscribe(new FilteredLocationChangedSubscriber());
 
     }
 
@@ -198,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
         compassButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(isCompass) {
+                if (isCompass) {
                     stopCompass();
                     isCompass = false;
                 } else {
