@@ -6,6 +6,12 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
 
+import cookie.android.com.traceapp.location.events.CookieSensorAccuracyChanged;
+import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
+import cookie.android.com.traceapp.location.events.CookieSensorEvent;
+import rx.Observable;
+import rx.subjects.PublishSubject;
+
 /**
  * Copyright (C) CookieStudio, 2016
  * All rights reserved.
@@ -14,11 +20,21 @@ public class CookieSensorEventListener implements SensorEventListener {
 
     private static final String TAG = CookieSensorEventListener.class.getSimpleName();
 
+    PublishSubject<CookieSensorEvent> sensorChangeSubject = PublishSubject.create();
+
     float azimuth;
     float pitch;
     float roll;
     float[] gravity;
     float[] geometric;
+
+    public Observable<CookieSensorChangedEvent> getLocationChangedObservable() {
+        return sensorChangeSubject.ofType(CookieSensorChangedEvent.class).asObservable();
+    }
+
+    public Observable<CookieSensorAccuracyChanged> getSensorAccuracyChangedObservable() {
+        return sensorChangeSubject.ofType(CookieSensorAccuracyChanged.class).asObservable();
+    }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -38,6 +54,8 @@ public class CookieSensorEventListener implements SensorEventListener {
                 pitch = orientation[1];
                 roll = orientation[2];
                 Log.d(TAG, "azimuth: " + azimuth + " pitch: " + pitch + "roll: " + roll);
+                sensorChangeSubject.onNext(new CookieSensorChangedEvent(orientation));
+
             }
         }
     }

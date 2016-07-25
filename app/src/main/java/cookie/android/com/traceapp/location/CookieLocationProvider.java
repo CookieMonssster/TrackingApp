@@ -12,6 +12,8 @@ import cookie.android.com.traceapp.location.events.LocationChangedEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderDisabledEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderEnabledEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderStatusChangedEvent;
+import cookie.android.com.traceapp.location.events.CookieSensorAccuracyChanged;
+import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
 import cookie.android.com.traceapp.location.filters.CookieSensorEventListener;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Observable;
@@ -33,7 +35,8 @@ public class CookieLocationProvider {
     protected long minimumTime = DEFAULT_MINIMUM_TIME;
     protected long minimumDistance = DEFAULT_MINIMUM_DISTANCE;
 
-    private int subscribeCounter = 0;
+    private int subscribeTrackingCounter = 0;
+    private int subscribeCompassCounter = 0;
 
     private Activity activity;
     private CookieLocationListener locationListener;
@@ -53,18 +56,23 @@ public class CookieLocationProvider {
         locationListener = new CookieLocationListener();
     }
 
-    public void startCompass() {
-        sensorManager.registerListener(cookieSensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
-        sensorManager.registerListener(cookieSensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_UI);
+    private void startCompass() {
+        if(subscribeCompassCounter > 1) {
+            return;
+        }
+            sensorManager.registerListener(cookieSensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+            sensorManager.registerListener(cookieSensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_UI);
     }
 
-    public void stopCompass() {
-        sensorManager.unregisterListener(cookieSensorEventListener);
+    private void stopCompass() {
+        if(subscribeCompassCounter < 1) {
+            sensorManager.unregisterListener(cookieSensorEventListener);
+        }
     }
 
 
     public void startTracking() {
-        if(subscribeCounter > 0) {
+        if(subscribeTrackingCounter > 1) {
             return;
         }
         PermissionRequester.verifyGPSPermissions(activity);
@@ -79,7 +87,9 @@ public class CookieLocationProvider {
     }
 
     public void stopTracking() {
-
+        if (subscribeTrackingCounter > 0) {
+            return;
+        }
         try {
             locationManager.removeUpdates(locationListener);
         } catch (SecurityException e) {
@@ -88,14 +98,14 @@ public class CookieLocationProvider {
     }
 
     public Observable<Location> getLocationChangeObservable() {
-        subscribeCounter++;
+        subscribeTrackingCounter++;
         startTracking();
         return locationListener.getLocationChangedObservable().map(new Func1<LocationChangedEvent, Location>() {
             @Override
             public Location call(LocationChangedEvent locationChangedEvent) {
                 return locationChangedEvent.location;
             }
-        }).doOnUnsubscribe(new unsubscribeAction());
+        }).doOnUnsubscribe(new unsubscribeTrackingAction());
     }
 
     public Observable<Location> getFilteredLocationChangeObservable(Func1<Location, Location> func1) {
@@ -107,32 +117,53 @@ public class CookieLocationProvider {
     }
 
     public Observable<LocationProviderStatusChangedEvent> getLocationProviderStatusChangedObservable() {
-        subscribeCounter++;
+        subscribeTrackingCounter++;
         startTracking();
         return locationListener.getLocationProviderStatusChangedObservable()
-                .doOnUnsubscribe(new unsubscribeAction());
+                .doOnUnsubscribe(new unsubscribeTrackingAction());
     }
 
     public Observable<LocationProviderEnabledEvent> getLocationProviderEnabledObservable() {
-        subscribeCounter++;
+        subscribeTrackingCounter++;
+        startTracking();
         return locationListener.getLocationProviderEnabledEvent()
-                .doOnUnsubscribe(new unsubscribeAction());
+                .doOnUnsubscribe(new unsubscribeTrackingAction());
     }
 
     public Observable<LocationProviderDisabledEvent> getLocationProviderDisabledObservable() {
-        subscribeCounter++;
+        subscribeTrackingCounter++;
+        startTracking();
         return locationListener.getLocationProviderDisabledEvent()
-                .doOnUnsubscribe(new unsubscribeAction());
+                .doOnUnsubscribe(new unsubscribeTrackingAction());
     }
 
-    private class unsubscribeAction implements Action0 {
+    public Observable<CookieSensorChangedEvent> getSensorChangeObservable() {
+        startCompass();
+        subscribeCompassCounter++;
+        return cookieSensorEventListener.getLocationChangedObservable()
+                .doOnUnsubscribe(new unsubscribeCompassAction());
+    }
 
+    public Observable<CookieSensorAccuracyChanged> getSensorAccuracyChangedObservable() {
+        startCompass();
+        subscribeCompassCounter++;
+        return cookieSensorEventListener.getSensorAccuracyChangedObservable()
+                .doOnUnsubscribe(new unsubscribeCompassAction());
+    }
+
+    private class unsubscribeTrackingAction implements Action0 {
         @Override
         public void call() {
-            subscribeCounter--;
-            if (subscribeCounter < 1) {
+            subscribeTrackingCounter--;
                 stopTracking();
-            }
+        }
+    }
+
+    private class unsubscribeCompassAction implements Action0 {
+        @Override
+        public void call() {
+            subscribeCompassCounter--;
+            stopCompass();
         }
     }
 }

@@ -22,7 +22,7 @@ import cookie.android.com.traceapp.helpers.Filters;
 import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
-import cookie.android.com.traceapp.location.events.SensorChangedEvent;
+import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
 import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
 import rx.Subscriber;
 import rx.Subscription;
@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
     Subscription locationChangeSubscriber;
     Subscription filteredLocationChangeSubscriber;
-    Subscription testSub;
+    Subscription compassChangeSubscriber;
 
     CookieLocationProvider cookieLocationProvider;
 
@@ -87,12 +87,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopCompass() {
         setStopCompassUI();
-        cookieLocationProvider.stopCompass();
+        compassChangeSubscriber.unsubscribe();
+
     }
 
     private void startCompass() {
+        Toast.makeText(this.getApplicationContext(), "Start Comass", Toast.LENGTH_SHORT).show();
         setCompassStartUI();
-        cookieLocationProvider.startCompass();
+        compassChangeSubscriber = cookieLocationProvider.getSensorChangeObservable().subscribe(new SensorChangedSubscriber());
     }
 
     private void stopTracking() {
@@ -229,15 +231,15 @@ public class MainActivity extends AppCompatActivity {
         lastLoc.setText(printLoc(loc));
     }
 
-    private void compassChanged(SensorChangedEvent sensorChangedEvent) {
+    private void compassChanged(CookieSensorChangedEvent sensorChangedEvent) {
         StringBuilder str = new StringBuilder();
         str.append("Azimuth: ");
-        str.append(sensorChangedEvent.orientation[0]);
+        str.append(Math.toDegrees(sensorChangedEvent.orientation[0]));
         str.append("\nPitch: ");
-        str.append(sensorChangedEvent.orientation[1]);
+        str.append(Math.toDegrees(sensorChangedEvent.orientation[1]));
         str.append("\nRoll: ");
-        str.append(sensorChangedEvent.orientation[2]);
-        compassButton.setText(str.toString());
+        str.append(Math.toDegrees(sensorChangedEvent.orientation[2]));
+        lastCompass.setText(str.toString());
     }
 
     private String printLoc(Location loc) {
@@ -280,6 +282,24 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onNext(Location location) {
             filteredTrackingList.add(location);
+        }
+    }
+
+    private class SensorChangedSubscriber extends Subscriber<CookieSensorChangedEvent> {
+
+        @Override
+        public void onCompleted() {
+
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onNext(CookieSensorChangedEvent sensorChangedEvent) {
+            compassChanged(sensorChangedEvent);
         }
     }
 }
