@@ -9,7 +9,7 @@ import rx.functions.Func1;
  * Copyright (C) CookieStudio, 2016
  * All rights reserved.
  */
-public class CookieSimpleFilter implements Func1<Location, Location> {
+public class CookieSimpleLocationFilter implements Func1<Location, Location> {
 
     private static final long WILDLY_OUT = 15;
     private static final long TOO_OLD = 10000;

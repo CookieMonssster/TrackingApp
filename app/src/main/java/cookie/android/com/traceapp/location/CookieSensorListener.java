@@ -1,4 +1,4 @@
-package cookie.android.com.traceapp.location.filters;
+package cookie.android.com.traceapp.location;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -16,15 +16,12 @@ import rx.subjects.PublishSubject;
  * Copyright (C) CookieStudio, 2016
  * All rights reserved.
  */
-public class CookieSensorEventListener implements SensorEventListener {
+public class CookieSensorListener implements SensorEventListener {
 
-    private static final String TAG = CookieSensorEventListener.class.getSimpleName();
+    private static final String TAG = CookieSensorListener.class.getSimpleName();
 
     PublishSubject<CookieSensorEvent> sensorChangeSubject = PublishSubject.create();
 
-    float azimuth;
-    float pitch;
-    float roll;
     float[] gravity;
     float[] geometric;
 
@@ -38,26 +35,40 @@ public class CookieSensorEventListener implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+        float accRange = 0;
+        float geoRange = 0;
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            accRange = event.sensor.getMaximumRange();
             gravity = event.values;
+            //printTab("ACC range: " + accRange, gravity);
         }
-        if(event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+        if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            geoRange = event.sensor.getMaximumRange();
             geometric = event.values;
+            printTab("GEO range: " + geoRange, geometric);
         }
-        if(gravity != null && geometric != null) {
+        if (gravity != null && geometric != null) {
             float R[] = new float[9];
             float I[] = new float[9];
-            if(SensorManager.getRotationMatrix(R, I, gravity, geometric)) {
+            if (SensorManager.getRotationMatrix(R, I, gravity, geometric)) {
                 float orientation[] = new float[3];
                 SensorManager.getOrientation(R, orientation);
-                azimuth = orientation[0];
-                pitch = orientation[1];
-                roll = orientation[2];
-                Log.d(TAG, "azimuth: " + azimuth + " pitch: " + pitch + "roll: " + roll);
-                sensorChangeSubject.onNext(new CookieSensorChangedEvent(orientation));
-
+                sensorChangeSubject.onNext(new CookieSensorChangedEvent(
+                        new double[]{orientation[0], orientation[1], orientation[2]}, accRange, geoRange));
             }
         }
+    }
+
+
+    private void printTab(String head, float[] tab) {
+        StringBuilder str = new StringBuilder();
+        str.append(head);
+        str.append(": ");
+        for (float value : tab) {
+            str.append(value);
+            str.append(", ");
+        }
+        Log.d(TAG, "" + str.toString());
     }
 
     @Override

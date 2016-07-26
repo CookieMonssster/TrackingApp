@@ -23,7 +23,9 @@ import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
 import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
-import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
+import cookie.android.com.traceapp.location.math.CookieSensorRoundFilter;
+import cookie.android.com.traceapp.location.math.CookieSensorToDegreesFilter;
+import cookie.android.com.traceapp.location.filters.CookieSimpleLocationFilter;
 import rx.Subscriber;
 import rx.Subscription;
 
@@ -77,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
     private void startFiltering() {
         trackingList = filters.getExampleData2();
         filteredTrackingList.clear();
-        CookieSimpleFilter sf = new CookieSimpleFilter();
+        CookieSimpleLocationFilter sf = new CookieSimpleLocationFilter();
         for (Location loc : trackingList) {
             filteredTrackingList.add(sf.call(loc));
         }
@@ -94,7 +96,10 @@ public class MainActivity extends AppCompatActivity {
     private void startCompass() {
         Toast.makeText(this.getApplicationContext(), "Start Comass", Toast.LENGTH_SHORT).show();
         setCompassStartUI();
-        compassChangeSubscriber = cookieLocationProvider.getSensorChangeObservable().subscribe(new SensorChangedSubscriber());
+        compassChangeSubscriber = cookieLocationProvider.getFilteredSensorChangeObservable()
+                .map(new CookieSensorToDegreesFilter())
+                .map(new CookieSensorRoundFilter())
+                .subscribe(new SensorChangedSubscriber());
     }
 
     private void stopTracking() {
@@ -234,11 +239,11 @@ public class MainActivity extends AppCompatActivity {
     private void compassChanged(CookieSensorChangedEvent sensorChangedEvent) {
         StringBuilder str = new StringBuilder();
         str.append("Azimuth: ");
-        str.append(Math.toDegrees(sensorChangedEvent.orientation[0]));
+        str.append(Math.round(sensorChangedEvent.azimuth));
         str.append("\nPitch: ");
-        str.append(Math.toDegrees(sensorChangedEvent.orientation[1]));
+        str.append(Math.round(sensorChangedEvent.pitch));
         str.append("\nRoll: ");
-        str.append(Math.toDegrees(sensorChangedEvent.orientation[2]));
+        str.append(Math.round(sensorChangedEvent.roll));
         lastCompass.setText(str.toString());
     }
 

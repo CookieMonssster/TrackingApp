@@ -14,8 +14,8 @@ import cookie.android.com.traceapp.location.events.LocationProviderEnabledEvent;
 import cookie.android.com.traceapp.location.events.LocationProviderStatusChangedEvent;
 import cookie.android.com.traceapp.location.events.CookieSensorAccuracyChanged;
 import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
-import cookie.android.com.traceapp.location.filters.CookieSensorEventListener;
-import cookie.android.com.traceapp.location.filters.CookieSimpleFilter;
+import cookie.android.com.traceapp.location.filters.CookieSimpleLocationFilter;
+import cookie.android.com.traceapp.location.filters.CookieSimpleSensorFilter;
 import rx.Observable;
 import rx.functions.Action0;
 import rx.functions.Func1;
@@ -44,7 +44,7 @@ public class CookieLocationProvider {
     private SensorManager sensorManager;
     private Sensor accelerometer;
     private Sensor magnetometer;
-    private CookieSensorEventListener cookieSensorEventListener;
+    private CookieSensorListener cookieSensorListener;
 
 
     protected CookieLocationProvider(Activity activity) {
@@ -52,7 +52,7 @@ public class CookieLocationProvider {
         sensorManager = (SensorManager) activity.getSystemService(activity.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        cookieSensorEventListener = new CookieSensorEventListener();
+        cookieSensorListener = new CookieSensorListener();
         locationListener = new CookieLocationListener();
     }
 
@@ -60,13 +60,13 @@ public class CookieLocationProvider {
         if(subscribeCompassCounter > 1) {
             return;
         }
-            sensorManager.registerListener(cookieSensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
-            sensorManager.registerListener(cookieSensorEventListener, magnetometer, SensorManager.SENSOR_DELAY_UI);
+            sensorManager.registerListener(cookieSensorListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+            sensorManager.registerListener(cookieSensorListener, magnetometer, SensorManager.SENSOR_DELAY_UI);
     }
 
     private void stopCompass() {
         if(subscribeCompassCounter < 1) {
-            sensorManager.unregisterListener(cookieSensorEventListener);
+            sensorManager.unregisterListener(cookieSensorListener);
         }
     }
 
@@ -113,7 +113,7 @@ public class CookieLocationProvider {
     }
 
     public Observable<Location> getSimpleFilteredLocationChangeObservable() {
-        return getFilteredLocationChangeObservable(new CookieSimpleFilter());
+        return getFilteredLocationChangeObservable(new CookieSimpleLocationFilter());
     }
 
     public Observable<LocationProviderStatusChangedEvent> getLocationProviderStatusChangedObservable() {
@@ -140,14 +140,18 @@ public class CookieLocationProvider {
     public Observable<CookieSensorChangedEvent> getSensorChangeObservable() {
         startCompass();
         subscribeCompassCounter++;
-        return cookieSensorEventListener.getLocationChangedObservable()
+        return cookieSensorListener.getLocationChangedObservable()
                 .doOnUnsubscribe(new unsubscribeCompassAction());
+    }
+
+    public Observable<CookieSensorChangedEvent> getFilteredSensorChangeObservable() {
+        return getSensorChangeObservable().map(new CookieSimpleSensorFilter());
     }
 
     public Observable<CookieSensorAccuracyChanged> getSensorAccuracyChangedObservable() {
         startCompass();
         subscribeCompassCounter++;
-        return cookieSensorEventListener.getSensorAccuracyChangedObservable()
+        return cookieSensorListener.getSensorAccuracyChangedObservable()
                 .doOnUnsubscribe(new unsubscribeCompassAction());
     }
 
