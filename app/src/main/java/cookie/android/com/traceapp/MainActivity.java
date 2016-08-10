@@ -23,6 +23,7 @@ import cookie.android.com.traceapp.helpers.PermissionsRequester;
 import cookie.android.com.traceapp.location.CookieLocationProvider;
 import cookie.android.com.traceapp.location.CookieLocationProviderBuilder;
 import cookie.android.com.traceapp.location.events.CookieSensorChangedEvent;
+import cookie.android.com.traceapp.location.filters.CookieLocationFilter;
 import cookie.android.com.traceapp.location.math.CookieSensorRoundFilter;
 import cookie.android.com.traceapp.location.math.CookieSensorToDegreesFilter;
 import cookie.android.com.traceapp.location.filters.CookieSimpleLocationFilter;
@@ -77,11 +78,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startFiltering() {
-        trackingList = filters.getExampleData2();
+        trackingList = filters.getExampleData3();
         filteredTrackingList.clear();
-        CookieSimpleLocationFilter sf = new CookieSimpleLocationFilter();
+        //CookieSimpleLocationFilter sf = new CookieSimpleLocationFilter();
+        CookieLocationFilter cf = new CookieLocationFilter();
         for (Location loc : trackingList) {
-            filteredTrackingList.add(sf.call(loc));
+            filteredTrackingList.add(cf.call(loc));
         }
         saveData(filteredToString(), FILTERED_URL);
 
