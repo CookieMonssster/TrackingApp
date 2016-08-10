@@ -1,6 +1,7 @@
 package cookie.android.com.traceapp.location.filters;
 
 import android.location.Location;
+
 import rx.functions.Func1;
 
 /**
@@ -14,6 +15,8 @@ public class CookieLocationFilter implements Func1<Location, Location> {
     private static final long NO_SAMPLES = 3;
     private static final double DEFAULT_DATA = 3000;
 
+    long lastLocationTime;
+
     double olderLon = DEFAULT_DATA;
     double olderLat = DEFAULT_DATA;
     double oldLon = DEFAULT_DATA;
@@ -21,17 +24,30 @@ public class CookieLocationFilter implements Func1<Location, Location> {
 
     @Override
     public Location call(Location location) {
-        if(checkOlderData(location) && checkOldData(location)) {
-            Location predictionLocation = new Location("unknown");
-            Location filteredLocation = new Location("unknown");
-            double dx = oldLon - olderLon;
-            double dy = oldLat - olderLat;
-            predictionLocation.setLongitude(oldLon + dx);
-            predictionLocation.setLatitude(oldLat + dy);
-            filteredLocation.setLongitude((predictionLocation.getLongitude() * NO_SAMPLES + location.getLongitude()) / (NO_SAMPLES + 1));
-            filteredLocation.setLatitude((predictionLocation.getLatitude() * NO_SAMPLES + location.getLatitude()) / (NO_SAMPLES + 1));
-            updateLocations(filteredLocation);
-            return filteredLocation;
+        if (checkOlderData(location) && checkOldData(location)) {
+            Location predictionLocation = new Location(location);
+            Location filteredLocation = new Location(location);
+
+            filteredLocation.setLongitude(oldLon);
+            filteredLocation.setLatitude(oldLat);
+
+            if (location.getAccuracy() < WILDLY_OUT) {
+                double dx = oldLon - olderLon;
+                double dy = oldLat - olderLat;
+                predictionLocation.setLongitude(oldLon + dx);
+                predictionLocation.setLatitude(oldLat + dy);
+                filteredLocation.setLongitude((predictionLocation.getLongitude() * NO_SAMPLES + location.getLongitude()) / (NO_SAMPLES + 1));
+                filteredLocation.setLatitude((predictionLocation.getLatitude() * NO_SAMPLES + location.getLatitude()) / (NO_SAMPLES + 1));
+                updateLocations(filteredLocation);
+            }
+
+                if (lastLocationTime > TOO_OLD) {
+                    filteredLocation.setLongitude(location.getLongitude());
+                    filteredLocation.setLatitude(location.getLatitude());
+                }
+
+
+                return filteredLocation;
         } else {
             return location;
         }
@@ -39,7 +55,7 @@ public class CookieLocationFilter implements Func1<Location, Location> {
 
 
     private boolean checkOldData(Location location) {
-        if(oldLon == DEFAULT_DATA || oldLon == DEFAULT_DATA) {
+        if (oldLon == DEFAULT_DATA || oldLon == DEFAULT_DATA) {
             oldLon = (olderLon * NO_SAMPLES + location.getLongitude()) / (NO_SAMPLES + 1);
             oldLat = (olderLat * NO_SAMPLES + location.getLatitude()) / (NO_SAMPLES + 1);
             return false;
@@ -48,7 +64,7 @@ public class CookieLocationFilter implements Func1<Location, Location> {
     }
 
     private boolean checkOlderData(Location location) {
-        if(olderLat == DEFAULT_DATA || olderLon == DEFAULT_DATA) {
+        if (olderLat == DEFAULT_DATA || olderLon == DEFAULT_DATA) {
             olderLon = location.getLongitude();
             olderLat = location.getLatitude();
             return false;
